@@ -34,8 +34,10 @@ Every package installed from a prebuilt wheel. Nothing was compiled.
 ```sh
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install mayavi==4.9.0 vtk==9.7.1 PyQt6==6.11.0 ipykernel nbconvert
+pip install -r requirements.txt
 ```
+
+`requirements.txt` pins the packages the notebook uses directly; pip resolves the rest.
 
 Then open `mayavi_smoke_test.ipynb` and select the `.venv` kernel, or run it from the command line:
 
@@ -43,11 +45,11 @@ Then open `mayavi_smoke_test.ipynb` and select the `.venv` kernel, or run it fro
 jupyter nbconvert --to notebook --execute --inplace mayavi_smoke_test.ipynb
 ```
 
-The whole notebook finishes in a few seconds.
+The four offscreen plots take a few seconds. The last cell then opens an interactive window and waits until you close it.
 
 ## What the notebook tests
 
-Each scene is rendered offscreen, saved as a PNG, and displayed inline, so it works in any Jupyter frontend.
+The first four scenes are rendered offscreen, saved as PNGs, and displayed inline, so they work in any Jupyter frontend.
 
 | `mlab.surf` | `mlab.mesh` |
 | --- | --- |
@@ -57,7 +59,7 @@ Each scene is rendered offscreen, saved as a PNG, and displayed inline, so it wo
 | --- | --- |
 | ![Helix with scatter points](helix.png) | ![Gyroid isosurface](isosurface.png) |
 
-The last cell opens a native interactive Qt window. It is commented out and **has not been tested** here.
+The fifth and last cell opens a native interactive Qt window (`mlab.test_plot3d()` followed by `mlab.show()`) that you can rotate and zoom. The cell blocks until you close the window. It needs a display, so skip it on a headless machine.
 
 ## PyQt5 hangs on macOS 26
 

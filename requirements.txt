@@ -1,0 +1,6 @@
+mayavi==4.9.0
+vtk==9.7.1
+PyQt6==6.11.0
+numpy==2.5.3
+ipykernel==7.4.0
+nbconvert==7.17.1
