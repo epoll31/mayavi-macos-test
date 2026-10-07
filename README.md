@@ -75,4 +75,4 @@ Only the pip route above is verified here. A conda-forge environment (`mamba cre
 
 ## How this was made
 
-This project was put together with [Claude Code](https://claude.com/claude-code), Anthropic's AI coding assistant. Claude helped write the notebook, diagnosed the PyQt5 hang, and drafted this README.
+This project was put together with [Claude Code](https://claude.com/claude-code).
