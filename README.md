@@ -1,33 +1,13 @@
 # Mayavi macOS test
 
-A small smoke test that checks whether [Mayavi](https://docs.enthought.com/mayavi/mayavi/) installs and renders on a current Apple Silicon Mac, using nothing but `pip` in a plain virtual environment.
+Checks whether [Mayavi](https://docs.enthought.com/mayavi/mayavi/) installs and renders on an Apple Silicon Mac with plain `pip`, and whether it can render interactively inside a Jupyter notebook.
 
-The result: it works, with one catch. Install **PyQt6, not PyQt5**. The [Mayavi install docs](https://docs.enthought.com/mayavi/mayavi/installation.html) say `pip install PyQt5`, and on this machine that makes Mayavi hang (details [below](#pyqt5-hangs-on-macos-26)).
+**Result:** both work, with two catches:
 
-## Tested environment
+- Install **PyQt6, not PyQt5**. PyQt5 makes Mayavi hang on macOS 26 (see [below](#pyqt5-hangs-on-macos-26)).
+- Mayavi's in-notebook viewer is broken with current packages. The notebooks in `notebook-viewer/` patch it.
 
-Everything below is what the notebook in this repo was actually run with, on 7 October 2026.
-
-| Component | Version |
-| --- | --- |
-| macOS | 26.6.2 (build 25G83) |
-| Hardware | Apple M1 Pro (arm64) |
-| Python | 3.12.7 (Homebrew), in a `venv` |
-| pip | 26.2.1 |
-| Mayavi | 4.9.0 |
-| VTK | 9.7.1 |
-| PyQt6 | 6.11.0 (Qt 6.11.2) |
-| NumPy | 2.5.3 |
-| traits | 7.2.0 |
-| traitsui | 8.0.0 |
-| pyface | 8.0.0 |
-| apptools | 5.3.1 |
-| envisage | 8.0.1 |
-| ipykernel | 7.4.0 |
-| IPython | 9.17.1 |
-| nbconvert | 7.17.1 |
-
-Every package installed from a prebuilt wheel. Nothing was compiled.
+Tested on macOS 26.6.2, Apple M1 Pro, Python 3.12.7, Mayavi 4.9.0, VTK 9.7.1, PyQt6 6.11.0 and NumPy 2.5.3. All other versions are pinned in `requirements.txt`.
 
 ## Setup
 
@@ -37,41 +17,47 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`requirements.txt` pins the packages the notebook uses directly; pip resolves the rest.
+Open the notebooks in VS Code with the `.venv` kernel, or in a browser with `jupyter lab`.
 
-Then open `mayavi_smoke_test.ipynb` and select the `.venv` kernel, or run it from the command line:
+## Smoke test
 
-```sh
-jupyter nbconvert --to notebook --execute --inplace mayavi_smoke_test.ipynb
-```
-
-The four offscreen plots take a few seconds. The last cell then opens an interactive window and waits until you close it.
-
-## What the notebook tests
-
-The first four scenes are rendered offscreen, saved as PNGs, and displayed inline, so they work in any Jupyter frontend.
+[`smoke-test/mayavi_smoke_test.ipynb`](smoke-test/mayavi_smoke_test.ipynb) renders four scenes offscreen and shows them inline:
 
 | `mlab.surf` | `mlab.mesh` |
 | --- | --- |
-| ![Surface plot](surface.png) | ![Parametric mesh](mesh.png) |
+| ![Surface plot](smoke-test/surface.png) | ![Parametric mesh](smoke-test/mesh.png) |
 
 | `mlab.plot3d` + `mlab.points3d` | `mlab.contour3d` |
 | --- | --- |
-| ![Helix with scatter points](helix.png) | ![Gyroid isosurface](isosurface.png) |
+| ![Helix with scatter points](smoke-test/helix.png) | ![Gyroid isosurface](smoke-test/isosurface.png) |
 
-The fifth and last cell opens a native interactive Qt window (`mlab.test_plot3d()` followed by `mlab.show()`) that you can rotate and zoom. The cell blocks until you close the window. It needs a display, so skip it on a headless machine.
+The last cell opens a native Qt window you can rotate and zoom. It blocks until you close the window.
+
+## Notebook viewer
+
+Both notebooks render a surface under the code cell, as a static image and as an interactive viewer (drag to rotate, scroll to zoom). A last cell checks that dragging works.
+
+- [`viewer_local.ipynb`](notebook-viewer/viewer_local.ipynb): for a kernel on your own machine (VS Code, or Jupyter in a browser on localhost).
+- [`viewer_hosted.ipynb`](notebook-viewer/viewer_hosted.ipynb): for uploading to a hosted Jupyter. It installs its own packages and sets up rendering on a Linux server.
+
+Run all cells from a fresh kernel.
+
+| Where | Result |
+| --- | --- |
+| JupyterLab in a browser (local) | Works |
+| VS Code | Works, but the first viewer of a session may not appear. Re-run the cell. |
+| Google Colab | Renders, but too slow to interact with |
+| jupyter.org/try | Can't work: it runs Python in the browser, and Mayavi's 3D engine (VTK) can't run there |
+
+Zooming is coarse: Mayavi zooms in fixed steps.
+
+The notebooks patch four bugs in Mayavi 4.9.0's viewer: a crash with NumPy 2, the view snapping back after you release the mouse, errors on keys like Shift, and the last frame of a drag being dropped. `requirements.txt` also pins puremagic 1.30, because Mayavi uses a function that puremagic 2 removed.
 
 ## PyQt5 hangs on macOS 26
 
-With PyQt5 5.15.11 installed instead of PyQt6, `mlab.figure()` never returns. The process sits at 0% CPU, even with `mlab.options.offscreen = True`.
+With PyQt5 instead of PyQt6, `mlab.figure()` never returns, even offscreen. Qt 5 and VTK together hang in macOS's event loop. Installing PyQt6 instead fixes it, with no extra configuration.
 
-A native stack sample of the stuck process shows Qt 5's macOS platform plugin entering `[NSApplication run]` from `QCoreApplication.processEvents` and never coming back. A bare PyQt5 application without VTK processes events normally, so the hang needs both VTK and Qt 5 in the same process.
-
-Replacing PyQt5 with PyQt6 fixes it. Mayavi picks PyQt6 up automatically when PyQt5 is not installed, so no environment variables are needed. If you have both installed, uninstall PyQt5.
-
-## Other install routes
-
-Only the pip route above is verified here. A conda-forge environment (`mamba create ... mayavi pyqt`) was tried first and abandoned. It was not investigated in detail, but the `pyqt` package it resolves to is 5.15, the same Qt 5 line that hangs with pip.
+A conda-forge environment was also tried and abandoned. It installs PyQt 5.15, the version that hangs.
 
 ## How this was made
 
